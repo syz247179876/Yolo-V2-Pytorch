@@ -167,14 +167,16 @@ class YoloV2(nn.Module):
         deep_x = self.deep_conv(deep_x)  # 得到 Bx1024x13x13
         # 特征融合
         _x = torch.cat((deep_x, shallow_x), dim=1)
+        _x = self.final_conv(_x)
         return _x
 
 
 if __name__ == '__main__':
     model_1 = Darknet19()
     image_size = random.randrange(320, 608 + 32, 32)
-    test_inputs = torch.randn(5, 3, 416, 416)
+    test_inputs = torch.randn(5, 3, image_size, image_size)
     x_1 = model_1(test_inputs)
 
     model_2 = YoloV2()
     x_2 = model_2(test_inputs)
+    print(x_2.size())
