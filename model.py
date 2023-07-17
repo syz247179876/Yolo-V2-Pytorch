@@ -1,6 +1,7 @@
 """
 根据YOLO V1论文构建网络结构
 """
+import random
 import typing as t
 import torch
 import torch.nn as nn
@@ -62,33 +63,36 @@ class BasicBlock(nn.Module):
 
 
 class Darknet19(nn.Module):
+    """
+    用于分类和预测时的Darknet-19
+    """
+
     def __init__(
             self,
-            norm_layer: t.Optional[t.Callable[..., nn.Module]] = None,
+            mode: str = 'classification',
     ):
         super(Darknet19, self).__init__()
-        if norm_layer is None:
-            self.norm_layer = nn.BatchNorm2d
-
+        assert mode in ['classification', 'predication'], 'mode should be `classification` or `predication`'
+        self.mode = mode
         self.layer_1 = nn.Sequential(
             BasicBlock(3, 32, kernel_size=(3, 3)),
-            nn.MaxPool2d((2, 2), stride=2),
+            max_pool_2x2()
         )
         self.layer_2 = nn.Sequential(
             BasicBlock(32, 64, kernel_size=(3, 3)),
-            nn.MaxPool2d((2, 2), stride=2),
+            max_pool_2x2()
         )
         self.layer_3 = nn.Sequential(
             BasicBlock(64, 128, kernel_size=(3, 3)),
             BasicBlock(128, 64, kernel_size=(1, 1)),
             BasicBlock(64, 128, kernel_size=(3, 3)),
-            nn.MaxPool2d((2, 2), stride=2),
+            max_pool_2x2()
         )
         self.layer_4 = nn.Sequential(
             BasicBlock(128, 256, kernel_size=(3, 3)),
             BasicBlock(256, 128, kernel_size=(1, 1)),
             BasicBlock(128, 256, kernel_size=(3, 3)),
-            nn.MaxPool2d((2, 2), stride=2),
+            max_pool_2x2()
         )
         self.layer_5 = nn.Sequential(
             BasicBlock(256, 512, kernel_size=(3, 3)),
@@ -96,7 +100,6 @@ class Darknet19(nn.Module):
             BasicBlock(256, 512, kernel_size=(3, 3)),
             BasicBlock(512, 256, kernel_size=(1, 1)),
             BasicBlock(256, 512, kernel_size=(3, 3)),
-            nn.MaxPool2d((2, 2), stride=2),
         )
         self.layer_6 = nn.Sequential(
             BasicBlock(512, 1024, kernel_size=(3, 3)),
@@ -106,24 +109,72 @@ class Darknet19(nn.Module):
             BasicBlock(512, 1024, kernel_size=(3, 3)),
         )
         self.layer_7 = nn.Sequential(
-            nn.Conv2d(1024, 1000, kernel_size=(1, 1)),
+            BasicBlock(1024, 1000, kernel_size=(1, 1)),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Softmax(dim=0)  # 得到 1000x1x1 的张量
         )
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(
+            self,
+            inputs: torch.Tensor
+    ) -> t.Union[t.Tuple[torch.Tensor], t.Tuple[torch.Tensor, torch.Tensor]]:
         _x = self.layer_1(inputs)
         _x = self.layer_2(_x)
         _x = self.layer_3(_x)
         _x = self.layer_4(_x)
-        _x = self.layer_5(_x)
+        shallow_x = self.layer_5(_x)
+        _x = max_pool_2x2()(shallow_x)
         _x = self.layer_6(_x)
-        _x = self.layer_7(_x)
+        if self.mode == 'classification':
+            _x = self.layer_7(_x)
+            return _x
+        elif self.mode == 'predication':
+            return shallow_x, _x
+
+
+class YoloV2(nn.Module):
+    """
+    用于预测的网络结构
+    用于预测时的Darknet, 输入图像大小为416x416, 输出13x13x125, 其中125 = 5(anchors num) * (5(pos) + 20(class))
+    在backbone中 增加了一个passthrough层, 与骨干网络深层特征进行特征融合, 实现细粒度特征。
+    """
+
+    def __init__(self):
+        super(YoloV2, self).__init__()
+        self.backbone = Darknet19('predication')
+        self.deep_conv = nn.Sequential(
+            BasicBlock(1024, 1024, kernel_size=(3, 3)),
+            BasicBlock(1024, 1024, kernel_size=(3, 3))
+        )
+        self.shallow_conv = nn.Sequential(
+            BasicBlock(512, 64, kernel_size=(1, 1)),
+        )
+        self.final_conv = nn.Sequential(
+            BasicBlock(1280, 1024, kernel_size=(3, 3)),
+            nn.Conv2d(1024, 125, 1),
+        )
+
+    @staticmethod
+    def passthrough(inputs: torch.Tensor) -> torch.Tensor:
+        # 在通道数上将B x channels x 26 x 26 -> B x channels * 4 x 13 x 13
+        return torch.cat(
+            (inputs[:, :, ::2, ::2], inputs[:, :, 1::2, ::2], inputs[:, :, 1::2, ::2], inputs[:, :, 1::2, 1::2]), dim=1)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        shallow_x, deep_x = self.backbone(inputs)
+        shallow_x = self.shallow_conv(shallow_x)  # 得到 Bx64x26x26
+        shallow_x = self.passthrough(shallow_x)  # 得到 Bx256x13x13
+        deep_x = self.deep_conv(deep_x)  # 得到 Bx1024x13x13
+        # 特征融合
+        _x = torch.cat((deep_x, shallow_x), dim=1)
         return _x
 
 
 if __name__ == '__main__':
-    model = Darknet19()
-    test_inputs = torch.randn(5, 3, 224, 224)
-    x = model(test_inputs)
-    print(x.shape)
+    model_1 = Darknet19()
+    image_size = random.randrange(320, 608 + 32, 32)
+    test_inputs = torch.randn(5, 3, 416, 416)
+    x_1 = model_1(test_inputs)
+
+    model_2 = YoloV2()
+    x_2 = model_2(test_inputs)
