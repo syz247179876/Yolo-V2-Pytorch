@@ -64,7 +64,7 @@ class BasicBlock(nn.Module):
 
 class Darknet19(nn.Module):
     """
-    用于分类和预测时的Darknet-19
+    用于分类的Darknet-19
     """
 
     def __init__(

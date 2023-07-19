@@ -10,8 +10,6 @@ from settings import *
 from argument import Args
 
 
-
-
 class GenerateAnchorBoxes(object):
     """
     基于聚类算法生成Anchor Boxes
@@ -20,7 +18,6 @@ class GenerateAnchorBoxes(object):
     2.使用IOU作为距离度量, 将每个box分配给其距离最近的anchor
     3.计算每个簇中所有box的宽和高的均值, 更新anchor
     4.重复2、3步，直到anchor不在变化或者达到了最大迭代次数
-
 
     Annotation: 对Box进行归一化后, 可假设所有box都位于左上角
     """
@@ -82,7 +79,7 @@ class GenerateAnchorBoxes(object):
             self.cur_iter = 0
         np.random.seed(self.random_seed)
         n = boxes.shape[0]
-        self.labels = np.zeros((n, ))
+        self.labels = np.zeros((n,))
 
         # 随机在boxes中选择K个box作为初始anchors
         self.anchors = boxes[np.random.choice(n, self.k, replace=True)]
@@ -130,18 +127,18 @@ def statistic():
     比较并挑选较好的K值
     """
     _obj = GenerateAnchorBoxes()
-    _boxes = obj.retrieve_bbox()
+    _boxes = _obj.retrieve_bbox()
     for i in range(2, 11):
-        obj.k = i
-        obj.k_means(_boxes)
+        _obj.k = i
+        _obj.k_means(_boxes)
         # obj.save_anchors()
-        print(f'k={i}, avg iou={obj.avg_iou()}')
+        print(f'k={i}, avg iou={_obj.avg_iou()}')
 
 
 if __name__ == "__main__":
     obj = GenerateAnchorBoxes()
-    # boxes_ = np.random.randn(1500, 2)
     boxes_ = obj.retrieve_bbox()
     obj.k_means(boxes_)
     obj.save_anchors()
-    print(obj.avg_iou())
+    print(f'k = 5, avg_iou={obj.avg_iou()}')
+    # statistic()

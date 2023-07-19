@@ -56,7 +56,7 @@ class VOCProcess(object):
                 x_min, y_min, x_max, y_max = float(bbox.find('xmin').text), float(bbox.find('ymin').text), float(
                     bbox.find('xmax').text), float(bbox.find('ymax').text)
 
-                bbox_info = normalization(pic_w, pic_h, x_min, y_min, x_max, y_max)
+                bbox_info = normalization(32, x_min, y_min, x_max, y_max)
                 with open(os.path.join(labels_dir, f'{img_id}.txt'), 'a') as f:
                     f.write(f'{cls_id} {" ".join([str(b) for b in bbox_info])}\n')
 
