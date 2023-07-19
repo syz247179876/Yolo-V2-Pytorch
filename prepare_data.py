@@ -58,7 +58,7 @@ class VOCProcess(object):
 
                 bbox_info = normalization(pic_w, pic_h, x_min, y_min, x_max, y_max)
                 with open(os.path.join(labels_dir, f'{img_id}.txt'), 'a') as f:
-                    f.write(f'{cls_id} {" ".join([str(b) for b in bbox_info])}')
+                    f.write(f'{cls_id} {" ".join([str(b) for b in bbox_info])}\n')
 
 
 if __name__ == "__main__":

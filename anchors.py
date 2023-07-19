@@ -10,6 +10,8 @@ from settings import *
 from argument import Args
 
 
+
+
 class GenerateAnchorBoxes(object):
     """
     基于聚类算法生成Anchor Boxes
@@ -25,10 +27,11 @@ class GenerateAnchorBoxes(object):
 
     def __init__(
             self,
+            k: t.Optional[int] = None
     ):
         args = Args()
         args.set_process_args()
-        self.k = args.opts.anchors_num
+        self.k = k or args.opts.anchors_num
         self.max_iter = args.opts.max_iter
         self.random_seed = args.opts.random_seed
         self.base_dir = args.opts.base_dir
@@ -46,12 +49,13 @@ class GenerateAnchorBoxes(object):
         res = []
         for filename in bbox_filename:
             file_path = os.path.join(labels_dir, filename)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                bboxes_info = f.read().split('\n')
+            with open(file_path, 'r') as f:
+                bboxes_info = f.read().split('\n')[:-1]
             bboxes_info = [bbox.split()[3: 5] for bbox in bboxes_info]
-            res.extend(bboxes_info)
-        res = np.array(res).astype(np.float32)
-        return res
+            for box in bboxes_info:
+                res.append(box)
+            # res.extend(bboxes_info)
+        return np.array(res).astype(np.float32)
 
     @staticmethod
     def iou(boxes: np.ndarray[np.ndarray], anchors: np.ndarray[np.ndarray]):
@@ -78,6 +82,7 @@ class GenerateAnchorBoxes(object):
             self.cur_iter = 0
         np.random.seed(self.random_seed)
         n = boxes.shape[0]
+        self.labels = np.zeros((n, ))
 
         # 随机在boxes中选择K个box作为初始anchors
         self.anchors = boxes[np.random.choice(n, self.k, replace=True)]
@@ -110,7 +115,27 @@ class GenerateAnchorBoxes(object):
         if not os.path.exists(anchors_dir):
             os.mkdir(anchors_dir)
         with open(os.path.join(anchors_dir, 'anchors.txt'), 'w') as f:
-            f.write(' '.join([str(c) for anchor in obj.anchors for c in anchor]))
+            f.write(' '.join([str(c) for anchor in self.anchors for c in anchor]))
+
+    def avg_iou(self):
+        """
+        针对所有样本, 计算其与所属的簇的IOU的平均值
+        筛选区间self.iou_plural[(n, ), (n, )]
+        """
+        return np.mean(self.iou_plural[np.arange(len(self.labels)), self.labels])
+
+
+def statistic():
+    """
+    比较并挑选较好的K值
+    """
+    _obj = GenerateAnchorBoxes()
+    _boxes = obj.retrieve_bbox()
+    for i in range(2, 11):
+        obj.k = i
+        obj.k_means(_boxes)
+        # obj.save_anchors()
+        print(f'k={i}, avg iou={obj.avg_iou()}')
 
 
 if __name__ == "__main__":
@@ -119,3 +144,4 @@ if __name__ == "__main__":
     boxes_ = obj.retrieve_bbox()
     obj.k_means(boxes_)
     obj.save_anchors()
+    print(obj.avg_iou())

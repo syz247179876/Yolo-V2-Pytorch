@@ -13,5 +13,5 @@ def normalization(pic_w, pic_h, *bbox_coordinate) -> t.Tuple[float, float, float
     mid_x = (bbox_coordinate[0] + bbox_coordinate[2]) / 2.0
     mid_y = (bbox_coordinate[1] + bbox_coordinate[3]) / 2.0
     bbox_w = bbox_coordinate[2] - bbox_coordinate[0]
-    bbox_y = bbox_coordinate[3] - bbox_coordinate[1]
-    return mid_x * n_w, mid_y * n_h, bbox_w * n_w, bbox_y * n_h
+    bbox_h = bbox_coordinate[3] - bbox_coordinate[1]
+    return mid_x * n_w, mid_y * n_h, bbox_w * n_w, bbox_h * n_h

@@ -15,7 +15,7 @@ class Args(object):
         """
         设置数据预处理时候的参数
         """
-        self.parser.add_argument('--random_seed', type=int, default=42, help='use to randomly initialize anchor boxes')
+        self.parser.add_argument('--random_seed', type=int, default=333, help='use to randomly initialize anchor boxes')
         self.parser.add_argument('--anchors_num', type=int, default=5, help='the number of anchor boxes')
         self.parser.add_argument('--max_iter', type=int, default=300,
                                  help='the max iteration to find best anchor boxes')
