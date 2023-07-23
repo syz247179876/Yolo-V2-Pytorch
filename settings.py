@@ -1,5 +1,5 @@
 """
-Yolo V2模型全局变量
+the global variable of Yolo V2 model
 """
 # 数据集目录
 DATASET_DIR = 'YOLO_V2_TrainTest'
@@ -18,6 +18,15 @@ DEBUG_OPEN = True
 # Anchors存储的路径
 ANCHORS_DIR = 'YOLO_V2_Anchors'
 # VOC数据集的类别
-VOC_CLASSES = ['person', 'bird', 'cat', 'cow', 'dog', 'horse', 'sheep',
-               'aeroplane', 'bicycle', 'boat', 'bus', 'car', 'motorbike', 'train',
-               'bottle', 'chair', 'diningtable', 'pottedplant', 'sofa', 'tvmonitor']
+VOC_CLASSES = (
+    'aeroplane', 'bicycle', 'bird', 'boat',
+    'bottle', 'bus', 'car', 'cat', 'chair',
+    'cow', 'diningtable', 'dog', 'horse',
+    'motorbike', 'person', 'pottedplant',
+    'sheep', 'sofa', 'train', 'tvmonitor'
+)
+VOC_CLASSES_LEN = 20
+# xml目录
+ANNOTATIONS_DIR = 'Annotations'
+# pic目录
+IMAGE_DIR = 'JPEGImages'

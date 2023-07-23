@@ -6,6 +6,8 @@ import typing as t
 import torch
 import torch.nn as nn
 import torchvision.models as tv_model
+
+from argument import args_train
 from settings import *
 
 
@@ -141,6 +143,7 @@ class YoloV2(nn.Module):
 
     def __init__(self):
         super(YoloV2, self).__init__()
+        self.opts = args_train.opts
         self.backbone = Darknet19('predication')
         self.deep_conv = nn.Sequential(
             BasicBlock(1024, 1024, kernel_size=(3, 3)),
@@ -151,24 +154,39 @@ class YoloV2(nn.Module):
         )
         self.final_conv = nn.Sequential(
             BasicBlock(1280, 1024, kernel_size=(3, 3)),
-            nn.Conv2d(1024, 125, 1),
+            nn.Conv2d(1024, self.opts.anchors_num * (1 + 4 + VOC_CLASSES_LEN), 1),
         )
 
     @staticmethod
     def passthrough(inputs: torch.Tensor) -> torch.Tensor:
-        # 在通道数上将B x channels x 26 x 26 -> B x channels * 4 x 13 x 13
+        """
+        在通道数上将B x channels x 26 x 26 -> B x channels * 4 x 13 x 13
+        融合高分辨率特征信息
+        """
         return torch.cat(
             (inputs[:, :, ::2, ::2], inputs[:, :, 1::2, ::2], inputs[:, :, 1::2, ::2], inputs[:, :, 1::2, 1::2]), dim=1)
 
+    @staticmethod
+    def post_process(inputs: torch.Tensor):
+        """
+        tensor post-processing of network output
+
+        note: use contiguous to open up new memory and the storage structure of '_x' is not the same as 'inputs', and
+            then, we can use view to change the shape of _x
+        """
+        b, info, h, w = inputs.size()
+        _x = inputs.permute(0, 2, 3, 1).contiguous().view(b, h * w, info)
+        return _x
+
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         shallow_x, deep_x = self.backbone(inputs)
-        shallow_x = self.shallow_conv(shallow_x)  # 得到 Bx64x26x26
-        shallow_x = self.passthrough(shallow_x)  # 得到 Bx256x13x13
-        deep_x = self.deep_conv(deep_x)  # 得到 Bx1024x13x13
-        # 特征融合
+        shallow_x = self.shallow_conv(shallow_x)  # [B, 64, 26, 26]
+        shallow_x = self.passthrough(shallow_x)  # [B, 256, 13, 13]
+        deep_x = self.deep_conv(deep_x)  # [B, 1024, 13, 13]
+        # feature fusion
         _x = torch.cat((deep_x, shallow_x), dim=1)
         _x = self.final_conv(_x)
-        return _x
+        return self.post_process(_x)
 
 
 if __name__ == '__main__':

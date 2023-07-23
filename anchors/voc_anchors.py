@@ -57,7 +57,8 @@ class GenerateAnchorBoxes(object):
     @staticmethod
     def iou(boxes: np.ndarray[np.ndarray], anchors: np.ndarray[np.ndarray]):
         """
-        计算gt boxes中每个box与所有anchors的IOU
+        计算gt boxes中每个box与所有anchors的IOU, 不考虑box的位置，只考虑box的大小。
+        假设所有box的左上顶点都在原点, 因为其实相对于每个grid都要找到相同的K个大小形状的anchors
         boxes: shape(n x 2)
         anchors: shape(k x 2)
         ==> shape(n, k)
@@ -111,7 +112,7 @@ class GenerateAnchorBoxes(object):
         anchors_dir = os.path.join(self.base_dir, ANCHORS_DIR)
         if not os.path.exists(anchors_dir):
             os.mkdir(anchors_dir)
-        with open(os.path.join(anchors_dir, 'anchors.txt'), 'w') as f:
+        with open(os.path.join(anchors_dir, 'voc_anchors.txt'), 'w') as f:
             f.write(' '.join([str(c) for anchor in self.anchors for c in anchor]))
 
     def avg_iou(self):
